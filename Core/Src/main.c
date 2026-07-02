@@ -112,19 +112,42 @@ int main(void)
   /* Infinite loop */
   while (1)
   {
-
+	  HAL_Delay(166);
   }
   /* USER CODE BEGIN 4 */
 }
 /* USER CODE BEGIN 4 */
 /* USER CODE BEGIN 4 */
+/* USER CODE BEGIN 4 */
+/* USER CODE BEGIN 4 */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
     if(hadc->Instance == ADC1) {
-        // ADC_READY message-ai delete pannidunga
-        // Direct-ah buffer-ai anuppuvom (90 values = 180 bytes)
-        HAL_UART_Transmit(&huart3, (uint8_t*)adc_buffer, 180, 100);
+        char msg[200]; // Data-vai store panna
+        int pos = 0;
+
+        // 30 samples loop
+        for(int i = 0; i < 30; i++) {
+            uint16_t r0 = adc_buffer[i*3 + 0];
+            uint16_t r1 = adc_buffer[i*3 + 1];
+            uint16_t r2 = adc_buffer[i*3 + 2];
+
+            // Calibration with Offset 2500
+            float v = (r0 * 3.3f / 4095.0f) * 7.6f;
+            float c = (r1 * 3.3f / 4095.0f) * 7.4f;
+            int32_t diff = 2500 - (int32_t)((r2 * 3300) / 4095);
+            float i_val = 1.2f + (diff / 100.0f);
+
+            if(i_val < 0.05f) i_val = 0.0f;
+
+            pos += sprintf(msg + pos, "%d,%d,%d,%.2f,%.2f,%.3f\r\n", r0, r1, r2, v, c, i_val);
+        }
+
+        // DMA vazhiya transmit pannuvom
+        HAL_UART_Transmit_DMA(&huart3, (uint8_t*)msg, pos);
     }
 }
+/* USER CODE END 4 */
+/* USER CODE END 4 */
 /* USER CODE END 4 */
 /* USER CODE END 4 */
 /**
