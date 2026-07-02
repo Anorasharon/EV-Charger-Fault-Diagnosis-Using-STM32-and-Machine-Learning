@@ -18,14 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+
+/* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-/* USER CODE END Includes */
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,10 +48,8 @@ DMA_HandleTypeDef hdma_adc1;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-volatile uint16_t adc_buffer[3]; // [0]=PC0, [1]=PC1, [2]=PA0
+volatile uint16_t adc_buffer[90]; // [0]=PC0, [1]=PC1, [2]=PA0
 /* USER CODE END PV */
-int32_t zero_offset_mv = 2500; // Default startup value
-uint32_t data_index = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -103,53 +99,34 @@ int main(void)
   MX_ADC1_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-  /* Inside main() -> After MX_DMA_Init() and MX_ADC1_Init() -> In USER CODE BEGIN 2 */
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, 3);
-  HAL_Delay(500); // Wait for ADC to stabilize
 
-  // Perform one-time calibration at startup (assuming load is already connected)
-  int32_t sum = 0;
-  for(int i = 0; i < 100; i++) {
-      sum += (adc_buffer[2] * 3300) / 4095;
-      HAL_Delay(10);
-  }
-  zero_offset_mv = sum / 100; // This captures the "Baseline" (e.g., your 1.2A load value)
+  /* USER CODE END 2 */
 
-  /* Inside while(1) -> Replace your existing loop content */
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  /* USER CODE BEGIN 2 */
+  // DMA circular mode-la start pannunga (90 elements, 3 channels * 30 samples)
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, 90);
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
   while (1)
   {
-      // 1. Raw ADC to mV
-      uint32_t raw_mv_0 = (adc_buffer[0] * 3300) / 4095;
-      uint32_t raw_mv_1 = (adc_buffer[1] * 3300) / 4095;
-      uint32_t raw_mv_2 = (adc_buffer[2] * 3300) / 4095;
 
-      // 2. Voltage Scaling
-      float v_val = (float)(raw_mv_0 * 76) / 10000.0f;
-      float cap_val = (float)(raw_mv_1 * 74) / 10000.0f;
-
-      // 3. Current Calculation (Relative to baseline)
-      // Formula: Current = 1.2A + ((Offset_mV - Current_mV) / Sensitivity)
-      // Sensitivity is 100mV/A for ACS712-20A
-      int32_t diff_mv = zero_offset_mv - (int32_t)raw_mv_2;
-      float current_A = 1.2f + ((float)diff_mv / 100.0f);
-
-      if (current_A < 0.05f) current_A = 0.00f;
-
-      // 4. Send Data
-      // 4. Send Data: ADC0, ADC1, ADC2, V_Val, Cap_Val, I_Val
-            char msg[128];
-            int len = sprintf(msg, "%u,%u,%u,%.2f,%.2f,%.3f\r\n",
-                        adc_buffer[0], adc_buffer[1], adc_buffer[2],
-                        v_val, cap_val, current_A);
-
-            HAL_UART_Transmit(&huart3, (uint8_t*)msg, len, 100);
-
-            HAL_Delay(500);
   }
-    /* USER CODE END WHILE */
-  /* USER CODE END 3 */
+  /* USER CODE BEGIN 4 */
 }
-
+/* USER CODE BEGIN 4 */
+/* USER CODE BEGIN 4 */
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+    if(hadc->Instance == ADC1) {
+        // ADC_READY message-ai delete pannidunga
+        // Direct-ah buffer-ai anuppuvom (90 values = 180 bytes)
+        HAL_UART_Transmit(&huart3, (uint8_t*)adc_buffer, 180, 100);
+    }
+}
+/* USER CODE END 4 */
+/* USER CODE END 4 */
 /**
   * @brief System Clock Configuration
   * @retval None
