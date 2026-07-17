@@ -49,6 +49,7 @@ DMA_HandleTypeDef hdma_adc1;
 
 UART_HandleTypeDef huart3;
 
+
 /* USER CODE BEGIN PV */
 volatile uint16_t adc_buffer[3]; // [0]=PC0, [1]=PC1, [2]=PA0
 /* USER CODE END PV */
